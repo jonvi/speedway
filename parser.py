@@ -16,36 +16,94 @@ elements = {
 }
 
 class DriverHeat():
-    def __init__(self, heatNumber, hoodColor, lane, score):
+    def __init__(self, heatNumber, hoodColor, lane, score, status):
         self.heatNumber = heatNumber
         self.hoodColor = hoodColor
         self.lane = lane
         self.score = score
+        self.status = status
 
     def __str__(self):
-        return "Heat: {}\t\tHood: {}\tScore: {}\tLane: {}".format(self.heatNumber, self.hoodColor, self.score, self.lane)
+        return "Heat: {}    Hood: {}\tScore: {}\Status: {}\tLane: {}".format(self.heatNumber, self.hoodColor, self.score, self.status, self.lane)
     
     def __repr__(self):
-        return "Heat: {}\t\tHood: {}\tScore: {}\tLane: {}".format(self.heatNumber, self.hoodColor, self.score, self.lane)
+        return "Heat: {}    Hood: {}\tScore: {}\tStatus {}\tLane: {}".format(self.heatNumber, self.hoodColor, self.score, self.status, self.lane)
+
+    def __lt__(self, other):
+         return self.heatNumber < other.heatNumber
 
 class DriverResult:
-    def __init__(self, driverName, gameId):
+    def __init__(self, driverName, team):
         self.driverName = driverName
-        self.gameId = gameId
+        self.team = team
         self.heats = []
 
     def addHeat(self, driverHeat):
         self.heats.append(driverHeat)
 
     def __str__(self):
-        return "Game: {}\tDriver {}\n".format(self.gameId, self.driverName) + "\n".join([heat.__repr__()  for heat in self.heats])
+        return "Driver {} ({})\n".format(self.driverName, self.team) + "\n".join([heat.__repr__()  for heat in self.heats])
 
     def __repr__(self):
-        return "Game: {}\tDriver {}\n".format(self.gameId, self.driverName)  + "\n".join([heat.__repr__() for heat in self.heats])
+        return "Driver {} ({})\n".format(self.driverName, self.team)  + "\n".join([heat.__repr__() for heat in self.heats])
+
+# Game(gameId, gameMetaData['date'], gameMetaData['league'], teamsAndScore['homeTeam'], teamsAndScore['awayTeam'])
+class Game:
+    def __init__(self, gameId, date, league, year, roundNumber, homeTeam, awayTeam, homeScore, awayScore):
+        self.gameId = gameId
+        self.date = date
+        self.league = league
+        self.year = year
+        self.roundNumber = roundNumber
+        self.homeTeam = homeTeam
+        self.awayTeam = awayTeam
+        self.attendance = None
+        self.homeScore = homeScore
+        self.awayScore = awayScore
+        self.heatTimes = None
+        self.homeCaptain = None
+        self.awayCaptain = None
+        self.homeLeader = None
+        self.awayLeader = None
+        self.driverResults = None
+
+    def __repr__(self):
+        return "Game {}: {} {} {} Round {} | {} ({}) - {} ({})".format(self.gameId, self.date, self.league, self.year, self.roundNumber, self.homeTeam, self.homeScore, self.awayTeam, self.awayScore) + "\n" + "\n".join([driverResult.__repr__() for driverResult in self.driverResults]) + "\n" + ", ".join([heat.__repr__() for heat in self.heatTimes]) + "\n" + "Home captain: {} | Away captain: {}\n".format(self.homeCaptain, self.awayCaptain) + "Home leader: {} | Away leader: {}".format(self.homeLeader, self.awayLeader)
+
+    def addAttendance(self, attendance):
+        self.attendance = int(attendance)
+
+    def addResult(self, homeResult, awayResult):
+        self.homeResult = homeResult
+        self.awayResult = awayResult
+
+    def addHeatTimes(self, heatTimes):
+        self.heatTimes = heatTimes
+    
+    def addCaptains(self, homeCaptain, awayCaptain):
+        self.homeCaptain = homeCaptain
+        self.awayCaptain = awayCaptain
+    
+    def addLeaders(self, homeLeader, awayLeader):
+        self.homeLeader = homeLeader
+        self.awayLeader = awayLeader
+
+    def addDriverResults(self, driverResults):
+        self.driverResults = driverResults
 
 def readFile(path):
     with open(path) as fp:
         return BeautifulSoup(fp, features="html.parser")
+
+def getGameMetaData(soup):
+    element, tag, value = elements['title']
+    title = soup.find(element, {tag: value}).getText().split(" ")
+    return {
+        'date': title[0],
+        'league': title[1],
+        'year': title[2],
+        'roundNumber': int(title[4])
+    }
 
 def getTeamsAndScore(soup):
     element, tag, value = elements['score']
@@ -71,7 +129,7 @@ def getTeamLeaders(soup):
     homeLeader, awayLeader = [leader.getText()[5:-18] for leader in soup.findAll(element, {tag: value})]
     return {
         'homeLeader': homeLeader,
-        'awayleader': awayLeader
+        'awayLeader': awayLeader
     }
 
 def getTeamCaptains(soup):
@@ -85,7 +143,7 @@ def getTeamCaptains(soup):
         'awayCaptain': awayCaptain
     }
 
-def getRiderHeatResults(soup, riderNumber, gameId):
+def getRiderHeatResults(soup, riderNumber, team):
     hoodColors = ('R', 'B', 'V', 'G')
     riderPrefix = 'ctl00_Body_ucCompetitionHeatSchema_RadGrid1_ctl00__{}'
     riderSoup = soup.find("tr", {"id": riderPrefix.format(riderNumber)})
@@ -93,7 +151,6 @@ def getRiderHeatResults(soup, riderNumber, gameId):
     driver = driverNames[1] + " " + driverNames[2]
 
     heatSoup = riderSoup.findAll("td", {"class": re.compile('Points|DriverStatus')})
-    print(riderSoup)
 
     heatNumbers = []
     for s in heatSoup:
@@ -104,38 +161,73 @@ def getRiderHeatResults(soup, riderNumber, gameId):
 
     heats = [heatInfo.getText().replace('\xa0', '') .strip().replace('  ', '') for heatInfo in heatSoup]
     
-    driverResult = DriverResult(gameId=gameId, driverName=driver) # TODO: Fix
+    driverResult = DriverResult(driverName=driver, team=team) # TODO: Fix
     currentHeatIndex = 0
     for heat in heats:
         heatNumber = heatNumbers[currentHeatIndex]
         color = None
         score = None
+        status = None
         lane = None
         h = heat.split(" ")
 
         # Sometimes the hood color is in other position
         if h[0] in hoodColors:
             color = h[0]
-            score = h[1]
-            lane = h[2]
+            lane = int(h[2])
+            if h[1].isnumeric():
+                score = int(h[1])
+            else:
+                status = h[1]
         else:
             color = h[2]
-            score = h[0]
-            lane = h[1]
+            lane = int(h[1])
+            if h[0].isnumeric():
+                score = int(h[0])
+            else:
+                status = h[0]
 
-        heatResult = DriverHeat(heatNumber, color, lane, score)
+        heatResult = DriverHeat(heatNumber, color, lane, score, status)
         driverResult.addHeat(heatResult)
 
         currentHeatIndex += 1
     return driverResult
 
+def getRidersHeatResults(soup):
+    homeRiderNumbers = [i for i in range(1, 8)]
+    awayRiderNumbers = [i for i in range(11, 18)]
+    riderNumbers = homeRiderNumbers + awayRiderNumbers
+    
+    driverResults = []
+    for riderNumber in riderNumbers:
+        if riderNumber in homeRiderNumbers:
+            driverResult = getRiderHeatResults(soup, riderNumber, "HOME")
+        else:
+            driverResult = getRiderHeatResults(soup, riderNumber, "AWAY")
+        driverResults.append(driverResult)
+    
+    return driverResults
 
 
-def parseResult(soup):
-    # <span class="text1" id="ctl00_Body_ucCompetitionHeader_lHeader">2019-07-02 Elitserien 2019 Omgång 12 Pir - Vet</span>
+def parseResult(soup, gameId):
+    gameMetaData = getGameMetaData(soup)
+    teamsAndScore = getTeamsAndScore(soup)
+    # (gameId, date, league, year, roundNumber, homeTeam, awayTeam):
+    game = Game(gameId, gameMetaData['date'], gameMetaData['league'], gameMetaData['year'], gameMetaData['roundNumber'], teamsAndScore['homeTeam'], teamsAndScore['awayTeam'], teamsAndScore['homeScore'], teamsAndScore['awayScore'])
+    attendance = getAttendance(soup)
+    game.addAttendance(attendance)
+    teamLeaders = getTeamLeaders(soup)
+    game.addLeaders(teamLeaders['homeLeader'], teamLeaders['awayLeader'])
+    teamCaptains = getTeamCaptains(soup)
+    game.addCaptains(teamCaptains['homeCaptain'], teamCaptains['awayCaptain'])
+    heatTimes = getHeatTimes(soup)
+    game.addHeatTimes(heatTimes)
+    driverResults = getRidersHeatResults(soup)
+    game.addDriverResults(driverResults)
+    return game
 
-    resultDivId = 'ctl00_Body_ucCompetitionHeader'
-    return soup.find("div", {"id": resultDivId})
+
+    
 
 
 if __name__ == '__main__':
@@ -145,7 +237,9 @@ if __name__ == '__main__':
     #res = getTeamsAndScore(soup)
     #print(res)
     #res = getAttendance(soup)
-    res = getRiderHeatResults(soup, riderNumber=1, gameId=10328)
-    print(res)
-    res = getRiderHeatResults(soup, riderNumber=2, gameId=10328)
+    #res = getRiderHeatResults(soup, riderNumber=1, gameId=10328)
+    #print(res)
+    #res = getRiderHeatResults(soup, riderNumber=2, gameId=10328)
+    #print(res)
+    res = parseResult(soup, 10328)
     print(res)
