@@ -42,10 +42,10 @@ class DriverResult:
         self.heats.append(driverHeat)
 
     def __str__(self):
-        return "Driver {} ({})\n".format(self.driverName, self.team) + "\n".join([heat.__repr__()  for heat in self.heats])
+        return "Driver: {} ({})\n".format(self.driverName, self.team) + "\n".join([heat.__repr__()  for heat in self.heats])
 
     def __repr__(self):
-        return "Driver {} ({})\n".format(self.driverName, self.team)  + "\n".join([heat.__repr__() for heat in self.heats])
+        return "Driver: {} ({})\n".format(self.driverName, self.team)  + "\n".join([heat.__repr__() for heat in self.heats])
 
 # Game(gameId, gameMetaData['date'], gameMetaData['league'], teamsAndScore['homeTeam'], teamsAndScore['awayTeam'])
 class Game:
@@ -172,13 +172,17 @@ def getRiderHeatResults(soup, riderNumber, team):
         h = heat.split(" ")
 
         # Sometimes the hood color is in other position
-        if h[0] in hoodColors:
+        if h[0] in hoodColors and h[2].isnumeric():
             color = h[0]
             lane = int(h[2])
             if h[1].isnumeric():
                 score = int(h[1])
             else:
                 status = h[1]
+        elif h[0].isalpha() and h[2].isalpha():
+            status = h[0]
+            lane = int(h[1])
+            color = h[2]
         else:
             color = h[2]
             lane = int(h[1])
@@ -233,13 +237,11 @@ def parseResult(soup, gameId):
 if __name__ == '__main__':
     path = 'games/10328.html'
     soup = readFile(path)
-    #res = parseResult(soup)
-    #res = getTeamsAndScore(soup)
-    #print(res)
-    #res = getAttendance(soup)
-    #res = getRiderHeatResults(soup, riderNumber=1, gameId=10328)
-    #print(res)
-    #res = getRiderHeatResults(soup, riderNumber=2, gameId=10328)
-    #print(res)
     res = parseResult(soup, 10328)
     print(res)
+
+    path = 'games/10329.html'
+    soup = readFile(path)
+    res = parseResult(soup, 10329)
+    print(res)
+
