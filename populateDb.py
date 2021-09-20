@@ -91,15 +91,15 @@ def insertCaptain(connection, cursor, name):
     return cursor.fetchone()[0]
 
 def insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId):
-    print(homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId)
-    print(gameData.year,
-        gameData.date,
-        gameData.league,
-        gameData.roundNumber,
-        gameData.homeScore,
-        gameData.awayScore,
-        gameData.attendance
-        )
+    # print(homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId)
+    # print(gameData.year,
+    #    gameData.date,
+    #    gameData.league,
+    #    gameData.roundNumber,
+    #    gameData.homeScore,
+    #    gameData.awayScore,
+    #    gameData.attendance
+    #    )
     insertQuery = """INSERT INTO game (id, year, date, league, roundNumber, homeTeamId, awayTeamId, 
     homeScore, awayScore, homeCaptainId, awayCaptainId, homeLeaderId, awayLeaderId, attendance)
     VALUES ({13}, {0}, '{1}', '{2}', {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12});""".format(
@@ -117,7 +117,7 @@ def insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, hom
         awayLeaderId,
         gameData.attendance,
         gameData.gameId)
-    print(insertQuery)
+    # print(insertQuery)
     cursor.execute(insertQuery)
     connection.commit()
 
@@ -174,8 +174,8 @@ def populateDb():
         homeTeamId = teams[gameData.homeTeam]
         awayTeamId = teams[gameData.awayTeam]
 
-        print("drivers:", drivers)
-        print("leaders:", leaders)
+        # print("drivers:", drivers)
+        # print("leaders:", leaders)
 
         insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId)
 

@@ -124,12 +124,33 @@ def getHeatTimes(soup):
     heatTimes = [float(heatTime.getText().replace(",", ".")) for heatTime in soup.findAll("td", {"class": re.compile('HeatTime')})]
     return heatTimes
 
+""" <tr class="rgRow TeamLeader" id="ctl00_Body_ucCompetitionHeatSchema_RadGrid1_ctl00__8">
+    <td align="left" class="DriverName" style="white-space:nowrap;">LL: Mikael Wirebrand</td>
+    <td align="center" class="Heat Heat1 TeamPoints">3</td>
+    <td align="center" class="Heat Heat2 TeamPoints">5</td><td align="center" class="Heat Heat3 TeamPoints">3</td>
+    <td align="center" class="Heat Heat4 TeamPoints">5</td><td align="center" class="Heat Heat5 TeamPoints">5</td>
+    <td align="center" class="Heat Heat6 TeamPoints">3</td><td align="center" class="Heat Heat7 TeamPoints">1</td>
+    <td align="center" class="Heat Heat8 TeamPoints">5</td><td align="center" class="Heat Heat9 TeamPoints">3</td>
+    <td align="center" class="Heat Heat10 TeamPoints">5</td><td align="center" class="Heat Heat11 TeamPoints">4</td>
+    <td align="center" class="Heat Heat12 TeamPoints">5</td><td align="center" class="Heat Heat13 TeamPoints">5</td>
+    <td align="center" class="Heat Heat14 TeamPoints">3</td><td align="center" class="Heat Heat15 TeamPoints">4</td>
+    <td align="center" class="Sum SumValue">59</td>
+    <td align="center" class="TotalHeats">
+    </td>
+</tr>
+<tr class="rgRow TeamLeader" id="ctl00_Body_ucCompetitionHeatSchema_RadGrid1_ctl00__18">
+    <td align="left" class="DriverName" style="white-space:nowrap;">LL: Stefan Bäckström</td>
+    <td align="center" class="Heat Heat1 TeamPoints">2</td>
+    </td>
+</tr> """
+
 def getTeamLeaders(soup):
     element, tag, value = elements['leader']
-    homeLeader, awayLeader = [leader.getText()[5:-18] for leader in soup.findAll(element, {tag: value})]
+    leaderRows = soup.findAll(element, {tag: value})
+    homeLeader, awayLeader = [leader.findAll('td', {'class': "DriverName"}) for leader in leaderRows]
     return {
-        'homeLeader': homeLeader,
-        'awayLeader': awayLeader
+        'homeLeader': homeLeader[0].getText().replace("LL: ", ""),
+        'awayLeader': awayLeader[0].getText().replace("LL: ", "")
     }
 
 def getTeamCaptains(soup):
