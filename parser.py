@@ -96,13 +96,22 @@ def readFile(path):
         return BeautifulSoup(fp, features="html.parser")
 
 def getGameMetaData(soup):
+    finalWords = ['Kvartsfinal', 'Semifinal', 'Final']
     element, tag, value = elements['title']
     title = soup.find(element, {tag: value}).getText().split(" ")
+    roundNumber = int(title[4])
+
+    for word in finalWords:
+        if word in title:
+            # Multiply round by 100 to identify final games
+            roundNumber = roundNumber * 100
+            break
+
     return {
         'date': title[0],
         'league': title[1],
         'year': title[2],
-        'roundNumber': int(title[4])
+        'roundNumber': roundNumber
     }
 
 def getTeamsAndScore(soup):

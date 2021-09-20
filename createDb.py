@@ -136,6 +136,65 @@ def createHeatTable(connection, cursor):
     cursor.execute(query)
     connection.commit()
 
+def createGameView():
+    connection = connect_to_db("speedway")
+    cursor = connection.cursor(buffered=True)
+    print("Creating game view...")
+    query = """CREATE view gameView AS
+        SELECT g.id,
+            g.year,
+            g.date,
+            g.league,
+            g.roundNumber,
+            ht.city,
+            g.attendance,
+            ht.name homeTeam,
+            g.homeScore,
+            at.name awayTeam,
+            g.awayScore
+        FROM game g
+        INNER JOIN team ht
+            ON ht.id = g.homeTeamId
+        INNER JOIN team at
+            ON at.id = g.awayTeamId
+        ORDER BY g.id
+        ;"""
+    cursor.execute(query)
+    connection.commit()
+
+def createHeatView():
+    connection = connect_to_db("speedway")
+    cursor = connection.cursor(buffered=True)
+    print("Creating game view...")
+    query = """CREATE view heatView AS
+        SELECT h.id,
+        h.gameId,
+        h.heatNumber,
+        d.name driver,
+        t.name team,
+        IF(h.teamId = g.homeTeamId, 'HOME', 'AWAY') AS arena,
+        h.points,
+        h.status,
+        h.lane,
+        h.hood,
+        IF(h.points = 3, bht.heatTime, NULL) AS heatTime
+
+        FROM heat h
+        INNER JOIN driver d
+            ON d.id = h.driverId
+        INNER JOIN team t
+            ON t.id = h.teamId
+        INNER JOIN game g
+            ON g.id = h.gameId
+        LEFT JOIN heat_time bht
+            ON bht.heatId = h.id
+
+        ORDER BY h.gameId, h.heatNumber
+        ;"""
+    cursor.execute(query)
+    connection.commit()
+
+
 def createAllTables():
     connection = connect_to_db("speedway")
     cursor = connection.cursor(buffered=True)
@@ -153,7 +212,9 @@ def populateDatabase():
     cursor = connection.cursor(buffered=True)
 
 if __name__ == "__main__":
-    createAllTables()
+    # createAllTables()
+    # createMasterView()
+    createHeatView()
 
 
 

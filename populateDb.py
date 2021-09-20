@@ -191,8 +191,7 @@ def populateBestHeat(connection, cursor, gameId, heatTimes):
         heatId, gameId, points = res[i]
         heatTime = heatTimes[i]
         insertQuery = """INSERT INTO heat_time (heatId, heatTime) VALUES ({0}, {1})""".format(heatId, heatTime)
-        print(insertQuery)
-        cursor.execute(query)
+        cursor.execute(insertQuery)
     connection.commit()
     
 
