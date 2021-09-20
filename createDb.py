@@ -117,12 +117,13 @@ def createGameTable(connection, cursor):
 def createHeatTable(connection, cursor):
     print("Creating heat table...")
     query = """CREATE TABLE heat (
-            id INT,
+            id INT AUTO_INCREMENT,
             gameId INT,
             heatNumber INT NOT NULL,
             driverId INT,
             teamId INT,
-            points INT NOT NULL,
+            points INT,
+            status VARCHAR(3),
             lane INT NOT NULL,
             hood VARCHAR(1) NOT NULL,
 

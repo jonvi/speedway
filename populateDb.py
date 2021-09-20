@@ -34,7 +34,6 @@ def create_connection(database):
     return connection
 
 def populateTeams():
-    print("\tAppending teams")
     connection = create_connection("speedway")
     teamData = [["Dackarna", "Målilla"],
     ["Indianerna", "Kumla"],
@@ -91,16 +90,6 @@ def insertCaptain(connection, cursor, name):
     return cursor.fetchone()[0]
 
 def insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId):
-    print(homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId)
-    # print(gameData.year,
-    #    gameData.date,
-    #    gameData.league,
-    #    gameData.roundNumber,
-    #    gameData.homeScore,
-    #    gameData.awayScore,
-    #    gameData.attendance
-    #    )
-
     if homeCaptainId is not None and awayCaptainId is not None:
         insertQuery = """INSERT INTO game (id, year, date, league, roundNumber, homeTeamId, awayTeamId, 
         homeScore, awayScore, homeCaptainId, awayCaptainId, homeLeaderId, awayLeaderId, attendance)
@@ -156,6 +145,59 @@ def insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, hom
     cursor.execute(insertQuery)
     connection.commit()
 
+def insertHeatData(connection, cursor, gameId, heatNumber, driverId, teamId, points, status, lane, hood):
+    if points is None:
+         insertQuery = """INSERT INTO heat (gameId, heatNumber, driverId, teamId, status, points, lane, hood)
+            VALUES ({0}, {1}, {2}, {3}, '{4}', NULL, {5}, '{6}');""".format(
+                gameId, heatNumber, driverId, teamId, status, lane, hood)
+    elif status is None:
+        insertQuery = """INSERT INTO heat (gameId, heatNumber, driverId, teamId, points, lane, hood)
+            VALUES ({0}, {1}, {2}, {3}, {4}, {5}, '{6}');""".format(
+                gameId, heatNumber, driverId, teamId, points, lane, hood)
+    else:
+        insertQuery = """INSERT INTO heat (gameId, heatNumber, driverId, teamId, status, points, lane, hood)
+            VALUES ({0}, {1}, {2}, {3}, {4}, '{5}', {6}, '{7}');""".format(
+                gameId, heatNumber, driverId, teamId, points, lane, hood)
+    cursor.execute(insertQuery)
+    connection.commit()
+
+def populateHeats(connection, cursor, gameData, homeTeamId, awayTeamId, drivers):
+    driverResults = gameData.driverResults
+    for driverResult in driverResults:
+
+        if driverResult.driverName not in drivers:
+            driverId = insertDriver(connection, cursor, driverResult.driverName)
+            drivers[driverResult.driverName] = driverId
+        else:
+            driverId = drivers[driverResult.driverName]
+
+        if driverResult.team == "HOME":
+            teamId = homeTeamId
+        if driverResult.team == "AWAY":
+            teamId = awayTeamId
+        
+        for heat in driverResult.heats:
+            insertHeatData(connection, cursor, gameData.gameId, heat.heatNumber, driverId, teamId, heat.score, heat.status, heat.lane, heat.hoodColor)
+
+def populateBestHeat(connection, cursor, gameId, heatTimes):
+    query = """SELECT id, gameId, points FROM heat WHERE points = 3 AND GameId = {} ORDER BY heatNumber;""".format(gameId)
+    cursor.execute(query)
+    res = cursor.fetchall()
+
+    if(len(res) != len(heatTimes)):
+        print("~~~~HEAT TIME MISMATCH!!!~~~~, {} != {}", len(res), len(heatTime))
+
+    for i in range(len(res)):
+        heatId, gameId, points = res[i]
+        heatTime = heatTimes[i]
+        insertQuery = """INSERT INTO heat_time (heatId, heatTime) VALUES ({0}, {1})""".format(heatId, heatTime)
+        print(insertQuery)
+        cursor.execute(query)
+    connection.commit()
+    
+
+def populateHeatTimes(connection, cursor, gameData):
+    pass
 
 def populateDb():
     alc_connection = create_connection("speedway")
@@ -211,6 +253,17 @@ def populateDb():
 
         insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId)
 
+    for gamePath in gamePaths:
+        gameId = gamePath.replace(directory, "").replace(suffix, "")
+        soup = parser.readFile(gamePath)
+        gameData = parser.parseResult(soup, gameId)
+        print("~~~HEAT GameID {}~~~~~".format(gameId))
+        populateHeats(connection, cursor, gameData, homeTeamId, awayTeamId, drivers)
+        populateBestHeat(connection, cursor, gameData.gameId, gameData.heatTimes)
+
+
+
+
 def dropTables():
     connection = connect_to_db("speedway")
     cursor = connection.cursor(buffered=True)
@@ -232,6 +285,7 @@ if __name__ == "__main__":
 
     # populateTeams()
     # print(populateDb())
+
     dropTables()
     createDb.createAllTables()
     populateTeams()
