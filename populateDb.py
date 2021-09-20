@@ -91,7 +91,7 @@ def insertCaptain(connection, cursor, name):
     return cursor.fetchone()[0]
 
 def insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId):
-    # print(homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId)
+    print(homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId)
     # print(gameData.year,
     #    gameData.date,
     #    gameData.league,
@@ -100,24 +100,59 @@ def insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, hom
     #    gameData.awayScore,
     #    gameData.attendance
     #    )
-    insertQuery = """INSERT INTO game (id, year, date, league, roundNumber, homeTeamId, awayTeamId, 
-    homeScore, awayScore, homeCaptainId, awayCaptainId, homeLeaderId, awayLeaderId, attendance)
-    VALUES ({13}, {0}, '{1}', '{2}', {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12});""".format(
-        gameData.year,
-        gameData.date,
-        gameData.league,
-        gameData.roundNumber,
-        homeTeamId,
-        awayTeamId,
-        gameData.homeScore,
-        gameData.awayScore,
-        homeCaptainId,
-        awayCaptainId,
-        homeLeaderId,
-        awayLeaderId,
-        gameData.attendance,
-        gameData.gameId)
-    # print(insertQuery)
+
+    if homeCaptainId is not None and awayCaptainId is not None:
+        insertQuery = """INSERT INTO game (id, year, date, league, roundNumber, homeTeamId, awayTeamId, 
+        homeScore, awayScore, homeCaptainId, awayCaptainId, homeLeaderId, awayLeaderId, attendance)
+        VALUES ({13}, {0}, '{1}', '{2}', {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12});""".format(
+            gameData.year,
+            gameData.date,
+            gameData.league,
+            gameData.roundNumber,
+            homeTeamId,
+            awayTeamId,
+            gameData.homeScore,
+            gameData.awayScore,
+            homeCaptainId,
+            awayCaptainId,
+            homeLeaderId,
+            awayLeaderId,
+            gameData.attendance,
+            gameData.gameId)
+    elif homeCaptainId is None and awayCaptainId is not None:
+        insertQuery = """INSERT INTO game (id, year, date, league, roundNumber, homeTeamId, awayTeamId, 
+        homeScore, awayScore, awayCaptainId, homeLeaderId, awayLeaderId, attendance)
+        VALUES ({12}, {0}, '{1}', '{2}', {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11});""".format(
+            gameData.year,
+            gameData.date,
+            gameData.league,
+            gameData.roundNumber,
+            homeTeamId,
+            awayTeamId,
+            gameData.homeScore,
+            gameData.awayScore,
+            awayCaptainId,
+            homeLeaderId,
+            awayLeaderId,
+            gameData.attendance,
+            gameData.gameId)
+    elif awayCaptainId is None and homeCaptainId is not None:
+        insertQuery = """INSERT INTO game (id, year, date, league, roundNumber, homeTeamId, awayTeamId, 
+        homeScore, awayScore, homeCaptainId, homeLeaderId, awayLeaderId, attendance)
+        VALUES ({12}, {0}, '{1}', '{2}', {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11});""".format(
+            gameData.year,
+            gameData.date,
+            gameData.league,
+            gameData.roundNumber,
+            homeTeamId,
+            awayTeamId,
+            gameData.homeScore,
+            gameData.awayScore,
+            homeCaptainId,
+            homeLeaderId,
+            awayLeaderId,
+            gameData.attendance,
+            gameData.gameId)
     cursor.execute(insertQuery)
     connection.commit()
 
@@ -156,26 +191,23 @@ def populateDb():
         
 
         homeCaptainId = None
-        if gameData.homeCaptain not in drivers:
+        if gameData.homeCaptain is not None and gameData.homeCaptain not in drivers:
             homeCaptainId = insertDriver(connection, cursor, gameData.homeCaptain)
             drivers[gameData.homeCaptain] = homeCaptainId
-        else:
+        elif gameData.homeCaptain is not None:
             homeCaptainId = drivers[gameData.homeCaptain]
 
 
         awayCaptainId = None
-        if gameData.awayCaptain not in drivers:
+        if gameData.awayCaptain is not None and gameData.awayCaptain not in drivers:
             awayCaptainId = insertDriver(connection, cursor, gameData.awayCaptain)
             drivers[gameData.awayCaptain] = awayCaptainId
-        else:
+        elif gameData.awayCaptain is not None:
             awayCaptainId = drivers[gameData.awayCaptain]
 
 
         homeTeamId = teams[gameData.homeTeam]
         awayTeamId = teams[gameData.awayTeam]
-
-        # print("drivers:", drivers)
-        # print("leaders:", leaders)
 
         insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId)
 

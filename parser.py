@@ -155,10 +155,18 @@ def getTeamLeaders(soup):
 
 def getTeamCaptains(soup):
     element, tag, value = elements['captain']
-    # TODO: Splice may be problem in future
-    homeCaptain, awayCaptain = [captain.getText()[5:-20] for captain in soup.findAll(element, {tag: value})]
-    homeCaptain = ''.join([i for i in homeCaptain if not i.isdigit()])
-    awayCaptain = ''.join([i for i in awayCaptain if not i.isdigit()])
+    captainRows = soup.findAll(element, {tag: value})
+    homeCaptain, awayCaptain = [captain.findAll('td', {'class': "DriverName"}) for captain in captainRows]
+
+    homeCaptain = homeCaptain[0].getText().replace("LK: ", "")
+    awayCaptain = awayCaptain[0].getText().replace("LK: ", "")
+
+    if homeCaptain == "" or homeCaptain == " ":
+        homeCaptain = None
+
+    if awayCaptain == ""  or awayCaptain == " ":
+        awayCaptain = None
+
     return {
         'homeCaptain': homeCaptain,
         'awayCaptain': awayCaptain
