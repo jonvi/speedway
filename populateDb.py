@@ -251,14 +251,16 @@ def populateDb():
         awayTeamId = teams[gameData.awayTeam]
 
         insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, homeLeaderId, awayLeaderId, homeCaptainId, awayCaptainId)
-
-    for gamePath in gamePaths:
-        gameId = gamePath.replace(directory, "").replace(suffix, "")
-        soup = parser.readFile(gamePath)
-        gameData = parser.parseResult(soup, gameId)
-        print("~~~HEAT GameID {}~~~~~".format(gameId))
         populateHeats(connection, cursor, gameData, homeTeamId, awayTeamId, drivers)
         populateBestHeat(connection, cursor, gameData.gameId, gameData.heatTimes)
+
+    #for gamePath in gamePaths:
+    #    gameId = gamePath.replace(directory, "").replace(suffix, "")
+    #    soup = parser.readFile(gamePath)
+    #    gameData = parser.parseResult(soup, gameId)
+    #    print("~~~HEAT GameID {}~~~~~".format(gameId))
+    #    populateHeats(connection, cursor, gameData, homeTeamId, awayTeamId, drivers)
+    #    populateBestHeat(connection, cursor, gameData.gameId, gameData.heatTimes)
 
 
 
@@ -266,7 +268,7 @@ def populateDb():
 def dropTables():
     connection = connect_to_db("speedway")
     cursor = connection.cursor(buffered=True)
-    tables = ["heat", "game", "heat_time", "driver_team","driver", "leader", "team"]
+    tables = ["heat", "game", "heat_time", "driver_team","driver", "leader", "team", "gameview", "heatview"]
     for table in tables:
         cursor.execute(""" 
             DROP TABLE IF EXISTS {0}""".format(table))

@@ -189,7 +189,7 @@ def createHeatView():
         LEFT JOIN heat_time bht
             ON bht.heatId = h.id
 
-        ORDER BY h.gameId, h.heatNumber
+        ORDER BY gameId, heatNumber
         ;"""
     cursor.execute(query)
     connection.commit()
