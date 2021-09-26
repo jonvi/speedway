@@ -67,7 +67,21 @@ def createHeatTimeTable(connection, cursor):
             id INT AUTO_INCREMENT,
             heatId INT,
             heatTime DOUBLE,
-            PRIMARY KEY ( id )
+            PRIMARY KEY ( id ),
+            CONSTRAINT FK_HeatId FOREIGN KEY ( heatId ) REFERENCES heat(id)
+        );"""
+    cursor.execute(query)
+    connection.commit()
+
+def createHeatScoreTable(connection, cursor):
+    print("Creating heat scores table...")
+    query = """CREATE TABLE heat_score (
+            id INT AUTO_INCREMENT,
+            heatId INT,
+            homeScore INT,
+            awayScore INT,
+            PRIMARY KEY ( id ),
+            CONSTRAINT FK_HeatScoreId FOREIGN KEY ( heatId ) REFERENCES heat(id)
         );"""
     cursor.execute(query)
     connection.commit()
@@ -173,6 +187,8 @@ def createHeatView():
         d.name driver,
         t.name team,
         IF(h.teamId = g.homeTeamId, 'HOME', 'AWAY') AS arena,
+        hs.homeScore,
+        hs.awayScore,
         h.points,
         h.status,
         h.lane,
@@ -186,10 +202,12 @@ def createHeatView():
             ON t.id = h.teamId
         INNER JOIN game g
             ON g.id = h.gameId
+        INNER JOIN heat_score hs
+            ON hs.heatId = h.id
         LEFT JOIN heat_time bht
             ON bht.heatId = h.id
 
-        ORDER BY gameId, heatNumber
+        ORDER BY gameId, heatNumber, arena
         ;"""
     cursor.execute(query)
     connection.commit()
@@ -206,6 +224,9 @@ def createAllTables():
     createGameTable(connection, cursor)
     createHeatTable(connection, cursor)
     createHeatTimeTable(connection, cursor)
+    createHeatScoreTable(connection, cursor)
+    createGameView()
+    createHeatView()
 
 def populateDatabase():
     connection = connect_to_db("speedway")

@@ -145,7 +145,7 @@ def insertGameMetaData(connection, cursor, gameData, homeTeamId, awayTeamId, hom
     cursor.execute(insertQuery)
     connection.commit()
 
-def insertHeatData(connection, cursor, gameId, heatNumber, driverId, teamId, points, status, lane, hood):
+def insertHeatData(connection, cursor, gameId, heatNumber, driverId, teamId, points, status, lane, hood, homeScore, awayScore):
     if points is None:
          insertQuery = """INSERT INTO heat (gameId, heatNumber, driverId, teamId, status, points, lane, hood)
             VALUES ({0}, {1}, {2}, {3}, '{4}', NULL, {5}, '{6}');""".format(
@@ -159,6 +159,12 @@ def insertHeatData(connection, cursor, gameId, heatNumber, driverId, teamId, poi
             VALUES ({0}, {1}, {2}, {3}, {4}, '{5}', {6}, '{7}');""".format(
                 gameId, heatNumber, driverId, teamId, points, lane, hood)
     cursor.execute(insertQuery)
+    heatId = cursor.lastrowid
+    # TODO: Refactor
+    # TODO: Wrong values. Needs to be debugged.
+    insertHeatScoreQuery = """INSERT INTO heat_score (heatId, homeScore, awayScore)
+    VALUES ({0}, {1}, {2});""".format(heatId, homeScore, awayScore)
+    cursor.execute(insertHeatScoreQuery)
     connection.commit()
 
 def populateHeats(connection, cursor, gameData, homeTeamId, awayTeamId, drivers):
@@ -177,7 +183,7 @@ def populateHeats(connection, cursor, gameData, homeTeamId, awayTeamId, drivers)
             teamId = awayTeamId
         
         for heat in driverResult.heats:
-            insertHeatData(connection, cursor, gameData.gameId, heat.heatNumber, driverId, teamId, heat.score, heat.status, heat.lane, heat.hoodColor)
+            insertHeatData(connection, cursor, gameData.gameId, heat.heatNumber, driverId, teamId, heat.score, heat.status, heat.lane, heat.hoodColor, heat.homeScore, heat.awayScore)
 
 def populateBestHeat(connection, cursor, gameId, heatTimes):
     query = """SELECT id, gameId, points FROM heat WHERE points = 3 AND GameId = {} ORDER BY heatNumber;""".format(gameId)
@@ -185,7 +191,7 @@ def populateBestHeat(connection, cursor, gameId, heatTimes):
     res = cursor.fetchall()
 
     if(len(res) != len(heatTimes)):
-        print("~~~~HEAT TIME MISMATCH!!!~~~~, {} != {}", len(res), len(heatTime))
+        print("~~~~HEAT TIME MISMATCH!!!~~~~, {} != {}", len(res), len(heatTimes))
 
     for i in range(len(res)):
         heatId, gameId, points = res[i]
@@ -197,6 +203,10 @@ def populateBestHeat(connection, cursor, gameId, heatTimes):
 
 def populateHeatTimes(connection, cursor, gameData):
     pass
+
+def populateHeatScores(connection, cursor, gameData):
+    pass
+
 
 def populateDb():
     alc_connection = create_connection("speedway")
@@ -268,10 +278,14 @@ def populateDb():
 def dropTables():
     connection = connect_to_db("speedway")
     cursor = connection.cursor(buffered=True)
-    tables = ["heat", "game", "heat_time", "driver_team","driver", "leader", "team", "gameview", "heatview"]
+    tables = ["heat_time", "heat_score", "heat", "game", "driver_team","driver", "leader", "team"]
+    views = ["gameview", "heatview"]
     for table in tables:
         cursor.execute(""" 
             DROP TABLE IF EXISTS {0}""".format(table))
+    for view in views:
+        cursor.execute(""" 
+            DROP VIEW IF EXISTS {0}""".format(view))
     connection.commit()
 
 

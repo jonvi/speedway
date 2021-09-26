@@ -16,21 +16,35 @@ elements = {
 }
 
 class DriverHeat():
-    def __init__(self, heatNumber, hoodColor, lane, score, status):
+    def __init__(self, heatNumber, hoodColor, lane, score, status, homeScore, awayScore):
         self.heatNumber = heatNumber
         self.hoodColor = hoodColor
         self.lane = lane
         self.score = score
         self.status = status
+        self.homeScore = homeScore
+        self.awayScore = awayScore
 
     def __str__(self):
-        return "Heat: {}    Hood: {}\tScore: {}\Status: {}\tLane: {}".format(self.heatNumber, self.hoodColor, self.score, self.status, self.lane)
+        return "Heat: {}     ({}-{})    Hood: {}\tScore: {}\tStatus: {}\tLane: {}".format(self.heatNumber, self.homeScore, self.awayScore, self.hoodColor, self.score, self.status, self.lane)
     
     def __repr__(self):
-        return "Heat: {}    Hood: {}\tScore: {}\tStatus {}\tLane: {}".format(self.heatNumber, self.hoodColor, self.score, self.status, self.lane)
+        return "Heat: {}     ({}-{})    Hood: {}\tScore: {}\tStatus {}\tLane: {}".format(self.heatNumber, self.homeScore, self.awayScore, self.hoodColor, self.score, self.status, self.lane)
 
     def __lt__(self, other):
          return self.heatNumber < other.heatNumber
+  
+    def __gt__(self, other):
+        return ((self.heatNumber) > (other.heatNumber))
+  
+    def __le__(self, other):
+        return ((self.heatNumber) <= (other.heatNumber))
+  
+    def __ge__(self, other):
+        return ((self.heatNumber) >= (other.heatNumber))
+  
+    def __eq__(self, other):
+        return (self.heatNumber == other.heatNumber)
 
 class DriverResult:
     def __init__(self, driverName, team):
@@ -40,6 +54,7 @@ class DriverResult:
 
     def addHeat(self, driverHeat):
         self.heats.append(driverHeat)
+        self.heats = sorted(self.heats) # TODO sort one time only
 
     def __str__(self):
         return "Driver: {} ({})\n".format(self.driverName, self.team) + "\n".join([heat.__repr__()  for heat in self.heats])
@@ -142,6 +157,28 @@ def getTeamLeaders(soup):
         'awayLeader': awayLeader[0].getText().replace("LL: ", "")
     }
 
+def getHeatScores(soup):
+    # TODO: Refactor
+    homeScores = []
+    homeScoreRows = soup.find('tr', {'id': 'ctl00_Body_ucCompetitionHeatSchema_RadGrid1_ctl00__9'})
+    for row in homeScoreRows:
+        rowString = str(row.getText())
+        if rowString and rowString.isdigit():
+            homeScores.append(int(rowString))
+
+    awayScores = []
+    awayScoreRows = soup.find('tr', {'id': 'ctl00_Body_ucCompetitionHeatSchema_RadGrid1_ctl00__19'})
+    for row in awayScoreRows:
+        rowString = str(row.getText())
+        if rowString and rowString.isdigit():
+            awayScores.append(int(rowString))
+
+    if(len(homeScores) != len(awayScores)):
+        print("ERROR: heat score mismatch!")
+        return "ERROR"
+
+    return homeScores, awayScores
+
 def getTeamCaptains(soup):
     element, tag, value = elements['captain']
     captainRows = soup.findAll(element, {tag: value})
@@ -161,7 +198,7 @@ def getTeamCaptains(soup):
         'awayCaptain': awayCaptain
     }
 
-def getRiderHeatResults(soup, riderNumber, team):
+def getRiderHeatResults(soup, riderNumber, team, homeScores, awayScores):
     hoodColors = ('R', 'B', 'V', 'G')
     riderPrefix = 'ctl00_Body_ucCompetitionHeatSchema_RadGrid1_ctl00__{}'
     riderSoup = soup.find("tr", {"id": riderPrefix.format(riderNumber)})
@@ -182,7 +219,12 @@ def getRiderHeatResults(soup, riderNumber, team):
     driverResult = DriverResult(driverName=driver, team=team) # TODO: Fix
     currentHeatIndex = 0
     for heat in heats:
-        heatNumber = heatNumbers[currentHeatIndex]
+        heatNumber = int(heatNumbers[currentHeatIndex])
+        if heatNumber == 16: # Bogus bonus round
+            continue
+        #print("currentHeatIndex: {}\tHeatNumber: {}\tlen(homeScores): {}".format(currentHeatIndex, heatNumber, len(homeScores)))
+        homeScore = homeScores[heatNumber-1]
+        awayScore = awayScores[heatNumber-1]
         color = None
         score = None
         status = None
@@ -209,13 +251,13 @@ def getRiderHeatResults(soup, riderNumber, team):
             else:
                 status = h[0]
 
-        heatResult = DriverHeat(heatNumber, color, lane, score, status)
+        heatResult = DriverHeat(heatNumber, color, lane, score, status, homeScore, awayScore)
         driverResult.addHeat(heatResult)
 
         currentHeatIndex += 1
     return driverResult
 
-def getRidersHeatResults(soup):
+def getRidersHeatResults(soup, homeScores, awayScores):
     homeRiderNumbers = [i for i in range(1, 8)]
     awayRiderNumbers = [i for i in range(11, 18)]
     riderNumbers = homeRiderNumbers + awayRiderNumbers
@@ -223,15 +265,16 @@ def getRidersHeatResults(soup):
     driverResults = []
     for riderNumber in riderNumbers:
         if riderNumber in homeRiderNumbers:
-            driverResult = getRiderHeatResults(soup, riderNumber, "HOME")
+            driverResult = getRiderHeatResults(soup, riderNumber, "HOME", homeScores, awayScores)
         else:
-            driverResult = getRiderHeatResults(soup, riderNumber, "AWAY")
+            driverResult = getRiderHeatResults(soup, riderNumber, "AWAY", homeScores, awayScores)
         driverResults.append(driverResult)
     
     return driverResults
 
 
 def parseResult(soup, gameId):
+    print("\tLooking at game: {}".format(gameId))
     gameMetaData = getGameMetaData(soup)
     teamsAndScore = getTeamsAndScore(soup)
     # (gameId, date, league, year, roundNumber, homeTeam, awayTeam):
@@ -244,7 +287,11 @@ def parseResult(soup, gameId):
     game.addCaptains(teamCaptains['homeCaptain'], teamCaptains['awayCaptain'])
     heatTimes = getHeatTimes(soup)
     game.addHeatTimes(heatTimes)
-    driverResults = getRidersHeatResults(soup)
+    homeScores, awayScores = getHeatScores(soup)
+    #print(gameId)
+    #for i in range(len(homeScores)):
+    #    print(homeScores[i],'-', awayScores[i])
+    driverResults = getRidersHeatResults(soup, homeScores, awayScores)
     game.addDriverResults(driverResults)
     return game
 
@@ -253,13 +300,15 @@ def parseResult(soup, gameId):
 
 
 if __name__ == '__main__':
-    path = 'games/10328.html'
+    gameId = 10329
+    path = 'games/{}.html'.format(gameId)
     soup = readFile(path)
-    res = parseResult(soup, 10328)
-    print(res)
+    #getHeatScores(soup)
+    res = parseResult(soup, gameId)
+    #print(res)
 
-    path = 'games/10329.html'
-    soup = readFile(path)
-    res = parseResult(soup, 10329)
-    print(res)
+    #path = 'games/10329.html'
+    #soup = readFile(path)
+    #res = parseResult(soup, 10329)
+    #print(res)
 
