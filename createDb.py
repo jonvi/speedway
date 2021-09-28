@@ -212,6 +212,49 @@ def createHeatView():
     cursor.execute(query)
     connection.commit()
 
+def createTwoHeatView():
+    connection = connect_to_db("speedway")
+    cursor = connection.cursor(buffered=True)
+    print("Creating two heat view...")
+    query = """CREATE view twoHeatView AS
+        SELECT gv.id,
+            gv.year,
+            gv.date,
+            gv.homeTeam,
+            gv.awayTeam,
+            gv.homeScore,
+            gv.awayScore,
+            hv.homeScore AS homeHeatScore,
+            hv.awayScore AS awayHeatScore,
+            IF(
+                (
+                    (gv.homeScore > gv.awayScore) AND (hv.homeScore > hv.awayScore)
+                ) OR (
+                    (gv.homeScore < gv.awayScore) AND (hv.homeScore < hv.awayScore)
+                ) OR (
+                    (gv.homeScore = gv.awayScore) AND (hv.homeScore = hv.awayScore)
+                ), 1, 0
+            ) AS sameAsSecondHeat
+        FROM gameview gv
+        INNER JOIN heatview hv
+            ON gv.id = hv.gameId AND hv.heatNumber = 2
+        GROUP BY 
+            gv.id,
+            gv.year,
+            gv.date,
+            gv.homeTeam,
+            gv.awayTeam,
+            gv.homeScore,
+            gv.awayScore,
+            hv.gameId,
+            hv.heatNumber,
+            hv.homeScore,
+            hv.awayScore
+        ORDER BY
+            gv.id;"""
+    cursor.execute(query)
+    connection.commit()
+
 
 def createAllTables():
     connection = connect_to_db("speedway")
@@ -235,7 +278,7 @@ def populateDatabase():
 if __name__ == "__main__":
     # createAllTables()
     # createMasterView()
-    createHeatView()
+    createTwoHeatView()
 
 
 

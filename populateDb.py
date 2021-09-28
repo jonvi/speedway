@@ -191,11 +191,15 @@ def populateBestHeat(connection, cursor, gameId, heatTimes):
     res = cursor.fetchall()
 
     if(len(res) != len(heatTimes)):
+        # Happens at one bonus round
         print("~~~~HEAT TIME MISMATCH!!!~~~~, {} != {}", len(res), len(heatTimes))
 
     for i in range(len(res)):
         heatId, gameId, points = res[i]
         heatTime = heatTimes[i]
+        if heatTime > 100:
+            heatTime = heatTime/10
+            print("HeatTime was {}, now is {}".format(heatTimes[i], heatTime))
         insertQuery = """INSERT INTO heat_time (heatId, heatTime) VALUES ({0}, {1})""".format(heatId, heatTime)
         cursor.execute(insertQuery)
     connection.commit()
