@@ -110,11 +110,21 @@ def readFile(path):
     with open(path) as fp:
         return BeautifulSoup(fp, features="html.parser")
 
-def getGameMetaData(soup):
+def getGameMetaData(soup, year):
     finalWords = ['Kvartsfinal', 'Semifinal', 'Final']
     element, tag, value = elements['title']
     title = soup.find(element, {tag: value}).getText().split(" ")
-    roundNumber = int(title[4])
+    if year == 2019:
+        date = title[0]
+        league = title[1]
+        year = title[2]
+        roundNumber = int(title[4])
+    elif year == 2021:
+        date = title[0]
+        league = title[1] + " " + title[2]
+        year = title[3]
+        roundNumber = int(title[5])
+
 
     for word in finalWords:
         if word in title:
@@ -123,9 +133,9 @@ def getGameMetaData(soup):
             break
 
     return {
-        'date': title[0],
-        'league': title[1],
-        'year': title[2],
+        'date': date,
+        'league': league,
+        'year': year,
         'roundNumber': roundNumber
     }
 
@@ -273,9 +283,9 @@ def getRidersHeatResults(soup, homeScores, awayScores):
     return driverResults
 
 
-def parseResult(soup, gameId):
+def parseResult(soup, gameId, year):
     print("\tLooking at game: {}".format(gameId))
-    gameMetaData = getGameMetaData(soup)
+    gameMetaData = getGameMetaData(soup, year)
     teamsAndScore = getTeamsAndScore(soup)
     # (gameId, date, league, year, roundNumber, homeTeam, awayTeam):
     game = Game(gameId, gameMetaData['date'], gameMetaData['league'], gameMetaData['year'], gameMetaData['roundNumber'], teamsAndScore['homeTeam'], teamsAndScore['awayTeam'], teamsAndScore['homeScore'], teamsAndScore['awayScore'])
@@ -300,11 +310,11 @@ def parseResult(soup, gameId):
 
 
 if __name__ == '__main__':
-    gameId = 10329
+    gameId = 10762
     path = 'games/{}.html'.format(gameId)
     soup = readFile(path)
     #getHeatScores(soup)
-    res = parseResult(soup, gameId)
+    res = parseResult(soup, gameId, 2021)
     #print(res)
 
     #path = 'games/10329.html'

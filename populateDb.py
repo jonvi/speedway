@@ -40,6 +40,7 @@ def populateTeams():
     ["Lejonen", "Gislaved"],
     ["Kumla Indianerna Speedway", "Kumla"],
     ["Masarna", "Avesta"],
+    ["Masarna Speedway", "Avesta"],
     ["Piraterna", "Motala"],
     ["Rospiggarna", "Hallstavik"],
     ["Eskilstuna Smederna", "Eskilstuna"],
@@ -49,8 +50,7 @@ def populateTeams():
     df = pd.DataFrame(teamData, columns = ['name', 'city'])
     df.to_sql('team', connection, if_exists='append', index=False)
 
-def getGameFilePaths():
-    directory = "games"
+def getGameFilePaths(directory):
     gameFiles = [directory + "/" + f for f in listdir(directory) if isfile(join(directory, f))]
     return sorted(gameFiles)
 
@@ -212,23 +212,23 @@ def populateHeatScores(connection, cursor, gameData):
     pass
 
 
-def populateDb():
+def populateDb(year):
     alc_connection = create_connection("speedway")
     connection = connect_to_db("speedway")
     cursor = connection.cursor(buffered=True)
 
-    gamePaths = getGameFilePaths()
-    directory = "games/"
+    directory = "games/2021" # TODO: fix
     suffix = ".html"
+    gamePaths = getGameFilePaths(directory)
 
     drivers = {}
     leaders = {}
     teams = getTeams(alc_connection)
 
     for gamePath in gamePaths:
-        gameId = gamePath.replace(directory, "").replace(suffix, "")
+        gameId = gamePath.replace(directory + "/", "").replace(suffix, "")
         soup = parser.readFile(gamePath)
-        gameData = parser.parseResult(soup, gameId)
+        gameData = parser.parseResult(soup, gameId, year)
 
         homeLeaderId = None
         if gameData.homeLeader not in leaders:
@@ -309,4 +309,4 @@ if __name__ == "__main__":
     createDb.createAllTables()
     populateTeams()
 
-    populateDb()
+    populateDb(2021)
