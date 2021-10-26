@@ -182,6 +182,7 @@ def createHeatView():
     print("Creating game view...")
     query = """CREATE view heatView AS
         SELECT h.id,
+        g.year,
         h.gameId,
         h.heatNumber,
         d.name driver,

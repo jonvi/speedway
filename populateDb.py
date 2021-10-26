@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 import pandas as pd
 import parser
 import createDb
-from os import listdir
+from os import listdir, walk
 from os.path import isfile, join
 
 def connect_to_db(database):
@@ -51,13 +51,15 @@ def populateTeams():
     df.to_sql('team', connection, if_exists='append', index=False)
 
 def getGameFilePaths(directory):
-    gameFiles = [directory + "/" + f for f in listdir(directory) if isfile(join(directory, f))]
+    subdirs = [x[0] for x in walk(directory)][1:]
+    gameFiles = []
+    for subdir in subdirs:
+        gameFiles += [subdir + "/" + f for f in listdir(subdir) if isfile(join(subdir, f))]
     return sorted(gameFiles)
 
 def getTeams(connection):
     df = pd.read_sql('SELECT * FROM team', con=connection)
     return dict(zip(df.name, df.id))
-
 
 def insertDriver(connection, cursor, name):
     insertQuery = """INSERT IGNORE INTO driver (name)
@@ -190,8 +192,8 @@ def populateBestHeat(connection, cursor, gameId, heatTimes):
     cursor.execute(query)
     res = cursor.fetchall()
 
-    if(len(res) != len(heatTimes)):
-        # Happens at one bonus round
+    if(len(res) != len(heatTimes) and len(res) != 15 and len(heatTimes) != 16):
+        # Bonus round adds one extra heat time.
         print("~~~~HEAT TIME MISMATCH!!!~~~~, {} != {}", len(res), len(heatTimes))
 
     for i in range(len(res)):
@@ -199,6 +201,9 @@ def populateBestHeat(connection, cursor, gameId, heatTimes):
         heatTime = heatTimes[i]
         if heatTime > 100:
             heatTime = heatTime/10
+            print("HeatTime was {}, now is {}".format(heatTimes[i], heatTime))
+        elif heatTime < 10 and heatTime > 0:
+            heatTime = heatTime*10
             print("HeatTime was {}, now is {}".format(heatTimes[i], heatTime))
         insertQuery = """INSERT INTO heat_time (heatId, heatTime) VALUES ({0}, {1})""".format(heatId, heatTime)
         cursor.execute(insertQuery)
@@ -212,12 +217,12 @@ def populateHeatScores(connection, cursor, gameData):
     pass
 
 
-def populateDb(year):
+def populateDb():
     alc_connection = create_connection("speedway")
     connection = connect_to_db("speedway")
     cursor = connection.cursor(buffered=True)
 
-    directory = "games/2021" # TODO: fix
+    directory = "games" # TODO: fix
     suffix = ".html"
     gamePaths = getGameFilePaths(directory)
 
@@ -226,7 +231,9 @@ def populateDb(year):
     teams = getTeams(alc_connection)
 
     for gamePath in gamePaths:
-        gameId = gamePath.replace(directory + "/", "").replace(suffix, "")
+        # gameId = gamePath.replace(directory + "/", "").replace(suffix, "")
+        gameId = gamePath.split("/")[-1].replace(suffix, "")
+        year = int(gamePath.split("/")[1])
         soup = parser.readFile(gamePath)
         gameData = parser.parseResult(soup, gameId, year)
 
@@ -307,6 +314,7 @@ if __name__ == "__main__":
 
     dropTables()
     createDb.createAllTables()
-    populateTeams()
+    populateTeams() 
 
-    populateDb(2021)
+    populateDb()
+    #getGameFilePaths("games")

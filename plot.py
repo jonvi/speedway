@@ -49,6 +49,20 @@ def plotArenaTimes(year):
     plt.legend()
     plt.show()
 
+def plotArenaTimesBars(year):
+    df = getHeatArenaInfo()
+    df.sort_values(by=['city'], inplace=True)
+    df = df[df["heatTime"] > 30]
+    #cities = sorted(df['city'].unique())
+    heatTimes = []
+    #for city in cities:
+    #    heatTimes.append(df[df["city"] == city]['heatTime'])
+
+    ax = sns.boxplot(x="city", y="heatTime", data=df)
+    plt.title("Bästa heat-tider {}".format(year))
+    plt.ylim(55,70)
+    plt.show()
+
 def getHeatLaneInfo():
     connection = create_connection("speedway")
     query = """SELECT
@@ -116,9 +130,10 @@ def plotLanePointsPerArena(year):
     plt.show()
 
 if __name__ == '__main__':
-    year = 2021
+    year = 2019
     # plotLanePoints()
     # 
-    plotArenaTimes(year)
-    plotLanePoints(year)
-    plotLanePointsPerArena(year)
+    # plotArenaTimes(year)
+    # plotLanePoints(year)
+    # plotLanePointsPerArena(year)
+    plotArenaTimesBars(year)
